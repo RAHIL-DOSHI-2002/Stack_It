@@ -22,15 +22,13 @@ const HomePage = () => {
 
     // Dropdown states
     const [showSortDropdown, setShowSortDropdown] = useState(false);
-    const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-    const [showMoreDropdown, setShowMoreDropdown] = useState(false);
+   
     const [selectedSort, setSelectedSort] = useState('newest');
     const [selectedFilter, setSelectedFilter] = useState('all');
 
     // Refs for dropdown management
     const sortDropdownRef = useRef(null);
-    const filterDropdownRef = useRef(null);
-    const moreDropdownRef = useRef(null);
+   
 
     // Dropdown options
     const sortOptions = [
@@ -42,21 +40,9 @@ const HomePage = () => {
         { value: 'least-answers', label: 'Least Answers' }
     ];
 
-    const filterOptions = [
-        { value: 'all', label: 'All Questions' },
-        { value: 'unanswered', label: 'Unanswered' },
-        { value: 'answered', label: 'Answered' },
-        { value: 'my-questions', label: 'My Questions' }
-    ];
+    
 
-    const moreOptions = [
-        { value: 'trending', label: 'Trending' },
-        { value: 'recent-activity', label: 'Recent Activity' },
-        { value: 'featured', label: 'Featured' },
-        { value: 'bounty', label: 'Bounty' }
-    ];
-
-    // Close dropdowns when clicking outside
+   
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target)) {
@@ -128,18 +114,7 @@ const HomePage = () => {
         setShowSortDropdown(false);
     };
 
-    const handleFilterChange = (filterValue) => {
-        setSelectedFilter(filterValue);
-        setCurrentPage(1);
-        setShowFilterDropdown(false);
-    };
-
-    const handleMoreAction = (action) => {
-        // Handle more dropdown actions
-        console.log('More action selected:', action);
-        setShowMoreDropdown(false);
-        // Add specific logic for each action as needed
-    };
+   
 
     // Handle search input
     const handleSearchChange = (value) => {
@@ -283,31 +258,9 @@ const HomePage = () => {
                         />
                     </div>
                     
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                        <span className="text-xs sm:text-sm font-medium text-gray-700">Filter:</span>
-                        <Dropdown
-                            label="Filter"
-                            options={filterOptions}
-                            selectedValue={selectedFilter}
-                            onSelect={handleFilterChange}
-                            isOpen={showFilterDropdown}
-                            onToggle={() => setShowFilterDropdown(!showFilterDropdown)}
-                            dropdownRef={filterDropdownRef}
-                        />
-                    </div>
+                   
                     
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                        <span className="text-xs sm:text-sm font-medium text-gray-700">More:</span>
-                        <Dropdown
-                            label="More"
-                            options={moreOptions}
-                            selectedValue=""
-                            onSelect={handleMoreAction}
-                            isOpen={showMoreDropdown}
-                            onToggle={() => setShowMoreDropdown(!showMoreDropdown)}
-                            dropdownRef={moreDropdownRef}
-                        />
-                    </div>
+                    
                 </div>
 
                 {/* Questions Count */}
