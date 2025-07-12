@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import RichTextEditor from '../components/RichTextEditor';
+import AnswerForm from '../components/AnswerForm';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../api/axios';
 import { questionsAPI, answersAPI } from '../api';
@@ -15,8 +15,10 @@ const QuestionDetailPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [votingStates, setVotingStates] = useState({});
-    const [answerContent, setAnswerContent] = useState('');
-    const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
+    // Local state for votes
+    const [questionVotes, setQuestionVotes] = useState(null);
+    const [answerVotes, setAnswerVotes] = useState({});
+    // Remove unused answerContent and isSubmittingAnswer
     const [showLoginPopup, setShowLoginPopup] = useState(false);
 
     useEffect(() => {
@@ -24,7 +26,6 @@ const QuestionDetailPage = () => {
             try {
                 setLoading(true);
                 setError('');
-                
                 // Use real API
                 const questionResponse = await questionsAPI.getById(id);
                 const fetchedQuestion = questionResponse.data;
@@ -33,129 +34,83 @@ const QuestionDetailPage = () => {
                 const fetchedAnswers = answersResponse.data;
                 setQuestion(fetchedQuestion);
                 setAnswers(fetchedAnswers);
-                
+                setQuestionVotes(fetchedQuestion.votes);
+                // Set answerVotes as a map of answerId: votes
+                const answerVotesMap = {};
+                fetchedAnswers.forEach(ans => {
+                    answerVotesMap[ans._id] = ans.votes;
+                });
+                setAnswerVotes(answerVotesMap);
             } catch (err) {
                 console.error('Error fetching question details:', err);
                 setError('Failed to load question details.');
-                
             } finally {
                 setLoading(false);
             }
         };
-
         fetchQuestionDetails();
     }, [id]);
 
+    // New voting logic using useState for local vote value
     const handleVote = async (type, answerId = null) => {
-        // Check if user is logged in
         if (!user) {
             setShowLoginPopup(true);
             return;
         }
-
         try {
-            // Use different endpoints for questions vs answers
-            const endpoint = answerId 
-                ? `/answers/${answerId}/vote` 
-                : `/questions/${id}/vote`;
-            
             const voteKey = answerId ? `answer-${answerId}` : `question-${id}`;
-            
-            // Optimistic update - disable button during request
             setVotingStates(prev => ({ ...prev, [voteKey]: true }));
-            
-            // Prepare vote data - use "up"/"down" for answers, "upvote"/"downvote" for questions
-            const voteData = answerId 
-                ? { type: type === 'upvote' ? 'up' : 'down' }
-                : { voteType: type };
-            
-            // Use real API for voting
             if (answerId) {
+                setAnswerVotes(prev => {
+                    const current = prev[answerId] ?? 0;
+                    const delta = type === 'upvote' ? 1 : -1;
+                    return { ...prev, [answerId]: Math.max(0, current + delta) };
+                }); console.log("before")
                 await answersAPI.vote(answerId, type);
+                console.log("after")
             } else {
+                setQuestionVotes(prev => {
+                    const current = typeof prev === 'number' && isFinite(prev) ? prev : 0;
+                    const delta = type === 'upvote' ? 1 : -1;
+                    return Math.max(0, current + delta);
+                });
                 await questionsAPI.vote(id, type);
             }
-            
-            // Update the UI optimistically
-            if (answerId) {
-                setAnswers(prev => 
-                    prev.map(answer => 
-                        answer.id === answerId 
-                            ? { ...answer, votes: answer.votes + (type === 'upvote' ? 1 : -1) }
-                            : answer
-                    )
-                );
-            } else {
-                setQuestion(prev => ({ 
-                    ...prev, 
-                    votes: prev.votes + (type === 'upvote' ? 1 : -1) 
-                }));
-            }
-            
         } catch (err) {
             console.error('Error voting:', err);
-            // You could show an error message here
             if (err.response?.status === 409) {
                 setError('You have already voted on this item.');
             } else if (err.response?.status === 401) {
                 setShowLoginPopup(true);
             } else {
-                setError('Failed to submit vote. Please try again.');
+                setError('Unable to register your vote at this time. Please refresh the page or try again later.');
             }
         } finally {
+            const voteKey = answerId ? `answer-${answerId}` : `question-${id}`;
             setVotingStates(prev => ({ ...prev, [voteKey]: false }));
         }
     };
 
-    const handleAnswerSubmit = async (e) => {
-        e.preventDefault();
-        
+    // New handler for AnswerForm
+    const handleAnswerFormSubmit = async ({ questionId, body }) => {
         // Check if user is logged in
         if (!user) {
             setShowLoginPopup(true);
-            return;
+            throw new Error('Not logged in');
         }
-
         // Validate answer content
-        const stripHtml = (html) => {
-            const tmp = document.createElement('div');
-            tmp.innerHTML = html;
-            return tmp.textContent || tmp.innerText || '';
-        };
-
-        if (!answerContent || stripHtml(answerContent).trim().length < 10) {
+        if (!body || body.trim().length < 10) {
             setError('Answer must be at least 10 characters long.');
-            return;
+            throw new Error('Answer too short');
         }
-
-        setIsSubmittingAnswer(true);
         setError('');
-
         try {
-            const answerData = {
-                content: answerContent
-            };
-
-            // Use mock API for demo
-            const response = await mockAPI.createAnswer(answerData);
-            
-            console.log('Answer submitted successfully:', response.data);
-            
-            // Add the new answer to the list
+            const response = await answersAPI.create({ questionId, content: body });
             const newAnswer = response.data;
             setAnswers(prev => [...prev, newAnswer]);
-            
-            // Clear the form
-            setAnswerContent('');
-            
-            // Show success message
-            setError(''); // Clear any previous errors
-            
         } catch (err) {
-            console.error('Error submitting answer:', err);
             setError(err.response?.data?.message || 'Failed to submit answer. Please try again.');
-        } finally {
-            setIsSubmittingAnswer(false);
+            throw err;
         }
     };
 
@@ -191,7 +146,6 @@ const QuestionDetailPage = () => {
     return (
         <div className="min-h-screen bg-gray-50">
             <Navbar user={user} />
-            
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-4xl">
                 {/* Breadcrumbs */}
                 <nav className="mb-4 sm:mb-6 text-xs sm:text-sm text-gray-600">
@@ -203,14 +157,12 @@ const QuestionDetailPage = () => {
                         {question.title}
                     </span>
                 </nav>
-
                 {/* Error Message */}
                 {error && (
                     <div className="mb-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-md">
                         <p className="text-sm text-red-800">{error}</p>
                     </div>
                 )}
-
                 {/* Question */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-4 sm:mb-6">
                     <div className="flex flex-col sm:flex-row sm:items-start gap-4">
@@ -234,7 +186,7 @@ const QuestionDetailPage = () => {
                                     </svg>
                                 )}
                             </button>
-                            <span className="text-lg sm:text-xl font-semibold text-gray-700">{question.votes}</span>
+                            <span className="text-lg sm:text-xl font-semibold text-gray-700">{typeof questionVotes === 'number' ? questionVotes : question.votes}</span>
                             <button
                                 onClick={() => handleVote('downvote')}
                                 disabled={votingStates[`question-${id}`]}
@@ -254,17 +206,14 @@ const QuestionDetailPage = () => {
                                 )}
                             </button>
                         </div>
-                        
                         {/* Question Content */}
                         <div className="flex-1 order-1 sm:order-2">
                             <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">{question.title}</h1>
-                            
                             {/* Question Description - Render HTML */}
                             <div 
                                 className="prose prose-sm max-w-none mb-4 text-gray-700 text-sm sm:text-base"
                                 dangerouslySetInnerHTML={{ __html: question.description }}
                             />
-                            
                             {/* Tags */}
                             <div className="flex flex-wrap gap-1 sm:gap-2 mb-4">
                                 {question.tags.map((tag, index) => (
@@ -273,7 +222,6 @@ const QuestionDetailPage = () => {
                                     </span>
                                 ))}
                             </div>
-                            
                             {/* Author and Date */}
                             <div className="text-xs sm:text-sm text-gray-500">
                                 Asked by <span className="font-medium">{question.author}</span> on {new Date(question.createdAt).toLocaleDateString()}
@@ -289,7 +237,6 @@ const QuestionDetailPage = () => {
                             {answers.length} {answers.length === 1 ? 'Answer' : 'Answers'}
                         </h2>
                     </div>
-                    
                     <div className="divide-y divide-gray-200">
                         {answers.length === 0 ? (
                             <div className="p-4 sm:p-6 text-center text-gray-500 text-sm sm:text-base">
@@ -297,13 +244,13 @@ const QuestionDetailPage = () => {
                             </div>
                         ) : (
                             answers.map((answer) => (
-                                <div key={answer.id} className="p-6">
+                                <div key={answer._id} className="p-6">
                                     <div className="flex items-start gap-4">
                                         {/* Answer Vote Buttons */}
                                         <div className="flex flex-col items-center space-y-2">
                                             <button
-                                                onClick={() => handleVote('upvote', answer.id)}
-                                                disabled={votingStates[`answer-${answer.id}`]}
+                                                onClick={() => handleVote('upvote', answer._id)}
+                                                disabled={votingStates[`answer-${answer._id}`]}
                                                 title={!user ? "Login to vote" : "Upvote this answer"}
                                                 className={`p-2 rounded-full transition-colors disabled:opacity-50 relative ${
                                                     !user 
@@ -311,7 +258,7 @@ const QuestionDetailPage = () => {
                                                         : 'text-gray-500 hover:text-green-600 hover:bg-green-50'
                                                 }`}
                                             >
-                                                {votingStates[`answer-${answer.id}`] ? (
+                                                {votingStates[`answer-${answer._id}`] ? (
                                                     <div className="animate-spin rounded-full h-6 w-6 border-2 border-gray-300 border-t-blue-600"></div>
                                                 ) : (
                                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -319,10 +266,10 @@ const QuestionDetailPage = () => {
                                                     </svg>
                                                 )}
                                             </button>
-                                            <span className="text-lg font-medium text-gray-700">{answer.votes}</span>
+                                            <span className="text-lg font-medium text-gray-700">{typeof answerVotes[answer._id] === 'number' ? answerVotes[answer._id] : answer.votes}</span>
                                             <button
-                                                onClick={() => handleVote('downvote', answer.id)}
-                                                disabled={votingStates[`answer-${answer.id}`]}
+                                                onClick={() => handleVote('downvote', answer._id)}
+                                                disabled={votingStates[`answer-${answer._id}`]}
                                                 title={!user ? "Login to vote" : "Downvote this answer"}
                                                 className={`p-2 rounded-full transition-colors disabled:opacity-50 relative ${
                                                     !user 
@@ -330,7 +277,7 @@ const QuestionDetailPage = () => {
                                                         : 'text-gray-500 hover:text-red-600 hover:bg-red-50'
                                                 }`}
                                             >
-                                                {votingStates[`answer-${answer.id}`] ? (
+                                                {votingStates[`answer-${answer._id}`] ? (
                                                     <div className="animate-spin rounded-full h-6 w-6 border-2 border-gray-300 border-t-blue-600"></div>
                                                 ) : (
                                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -339,18 +286,14 @@ const QuestionDetailPage = () => {
                                                 )}
                                             </button>
                                         </div>
-                                        
                                         {/* Answer Content */}
                                         <div className="flex-1">
-                                            {/* Answer Description - Render HTML */}
                                             <div 
                                                 className="prose prose-sm max-w-none mb-4 text-gray-700"
-                                                dangerouslySetInnerHTML={{ __html: answer.description }}
+                                                dangerouslySetInnerHTML={{ __html: answer.content }}
                                             />
-                                            
-                                            {/* Answer Author and Date */}
                                             <div className="text-sm text-gray-500">
-                                                Answered by <span className="font-medium">{answer.author}</span> on {new Date(answer.createdAt).toLocaleDateString()}
+                                                Answered by <span className="font-medium">{answer.authorId?.username || 'Unknown'}</span> on {new Date(answer.createdAt).toLocaleDateString()}
                                             </div>
                                         </div>
                                     </div>
@@ -363,37 +306,8 @@ const QuestionDetailPage = () => {
                 {/* Answer Form */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Answer</h3>
-                    
                     {user ? (
-                        <form onSubmit={handleAnswerSubmit} className="space-y-4">
-                            <div>
-                                <RichTextEditor
-                                    value={answerContent}
-                                    onChange={setAnswerContent}
-                                    placeholder="Write your answer here..."
-                                />
-                            </div>
-                            
-                            <div className="flex justify-between items-center">
-                                <p className="text-sm text-gray-500">
-                                    Provide a clear, detailed answer with examples if possible.
-                                </p>
-                                <button
-                                    type="submit"
-                                    disabled={isSubmittingAnswer || !answerContent.trim()}
-                                    className={`px-6 py-2 rounded-md font-medium transition-colors flex items-center gap-2 ${
-                                        isSubmittingAnswer || !answerContent.trim()
-                                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                            : 'bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500'
-                                    }`}
-                                >
-                                    {isSubmittingAnswer && (
-                                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-white"></div>
-                                    )}
-                                    {isSubmittingAnswer ? 'Submitting Answer...' : 'Post Answer'}
-                                </button>
-                            </div>
-                        </form>
+                        <AnswerForm questionId={id} onSubmit={handleAnswerFormSubmit} />
                     ) : (
                         <div className="text-center py-8">
                             <p className="text-gray-600 mb-4">You need to be logged in to post an answer.</p>

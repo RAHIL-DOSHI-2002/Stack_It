@@ -58,10 +58,17 @@ export const questionsAPI = {
 
 export const answersAPI = {
     getByQuestionId: (questionId) => api.get(`/answers?questionId=${questionId}`),
-    create: (answerData) => api.post('/answers', answerData),
+    create: ({ questionId, content }) => api.post(`/answers/${questionId}`, { content }),
     update: (id, answerData) => api.put(`/answers/${id}`, answerData),
     delete: (id) => api.delete(`/answers/${id}`),
-    vote: (id, voteType) => api.post(`/answers/${id}/vote`, { voteType }),
+    vote: (id, type) => {
+        // type is 'upvote' or 'downvote', backend expects { delta: +1 } or { delta: -1 }
+        
+
+        const delta = type === 'upvote' ? 1 : -1;
+        console.log(delta)
+        return api.post(`/answers/vote/${id}`, { delta });
+    },
 };
 
 export const tagsAPI = {

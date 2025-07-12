@@ -6,6 +6,7 @@ const User    = require("../models/User");
 const router = express.Router();
 
 
+
 router.post("/register", async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -18,11 +19,22 @@ router.post("/register", async (req, res) => {
 
     // 3. Create user
     const user = await User.create({ username, password: hash });
-    res.status(201).json({ message: "User registered.", userId: user._id });
+    // 4. Sign a JWT
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+    res.status(201).json({
+      message: "User registered.",
+      user: { _id: user._id, username: user.username, role: user.role },
+      token
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 
 router.post("/login", async (req, res) => {
@@ -43,7 +55,23 @@ router.post("/login", async (req, res) => {
       { expiresIn: "1d" }
     );
 
-    res.json({ token, userId: user._id, role: user.role });
+    res.json({
+      token,
+      user: { _id: user._id, username: user.username, role: user.role }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// GET /profile - Get current user info
+const authMiddleware = require("../middleware/authMiddleware");
+router.get("/profile", authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("_id username role");
+    if (!user) return res.status(404).json({ message: "User not found." });
+    res.json(user);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
