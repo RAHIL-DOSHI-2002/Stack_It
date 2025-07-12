@@ -34,8 +34,6 @@ const HomePage = () => {
     const sortOptions = [
         { value: 'newest', label: 'Newest' },
         { value: 'oldest', label: 'Oldest' },
-        { value: 'most-votes', label: 'Most Votes' },
-        { value: 'least-votes', label: 'Least Votes' },
         { value: 'most-answers', label: 'Most Answers' },
         { value: 'least-answers', label: 'Least Answers' }
     ];
@@ -131,35 +129,14 @@ const HomePage = () => {
     useEffect(() => {
         let filtered = [...questions];
 
-        // Apply search filter
-        if (searchTerm.trim()) {
-            filtered = filtered.filter(question =>
-                question.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                question.body.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                question.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-            );
-        }
-
-        // Apply filter
-        if (selectedFilter === 'unanswered') {
-            filtered = filtered.filter(question => question.answerCount === 0);
-        } else if (selectedFilter === 'answered') {
-            filtered = filtered.filter(question => question.answerCount > 0);
-        } else if (selectedFilter === 'my-questions' && user) {
-            filtered = filtered.filter(question => question.author === user.username);
-        }
-
-        // Apply sort
-        filtered.sort((a, b) => {
+       
+       
+filtered.sort((a, b) => {
             switch (selectedSort) {
                 case 'newest':
                     return new Date(b.createdAt) - new Date(a.createdAt);
                 case 'oldest':
                     return new Date(a.createdAt) - new Date(b.createdAt);
-                case 'most-votes':
-                    return b.votes - a.votes;
-                case 'least-votes':
-                    return a.votes - b.votes;
                 case 'most-answers':
                     return b.answerCount - a.answerCount;
                 case 'least-answers':
