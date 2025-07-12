@@ -7,7 +7,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import AskQuestionPage from './pages/AskQuestionPage';
 import QuestionDetailPage from './pages/QuestionDetailPage';
-import './App.css';
+
 
 function App() {
   return (

@@ -1,4 +1,4 @@
-    import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import QuestionCard from '../components/QuestionCard';
@@ -58,32 +58,53 @@ const HomePage = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    // Notification state
+    const [hasNewAnswerNotification, setHasNewAnswerNotification] = useState(false);
+
+    // Fetch notifications from backend
+    useEffect(() => {
+        const fetchNotifications = async () => {
+            if (!user || !user._id) {
+                setHasNewAnswerNotification(false);
+                return;
+            }
+            try {
+                const res = await axiosInstance.get('/api/notifications', {
+                    headers: { Authorization: `Bearer ${user.token}` }
+                });
+                const notifications = res.data || [];
+                // If any notification is unread, show the red dot
+                const hasUnread = notifications.some(n => n.isRead === false);
+                setHasNewAnswerNotification(hasUnread);
+            } catch (err) {
+                setHasNewAnswerNotification(false);
+            }
+        };
+        fetchNotifications();
+    }, [user]);
+
     // Fetch questions from API
     useEffect(() => {
         const fetchQuestions = async () => {
             try {
                 setLoading(true);
                 setError(null);
-                
-        // Use real API
-        const response = await questionsAPI.getAll({
-            page: currentPage,
-            limit: questionsPerPage,
-            sort: selectedSort,
-            filter: selectedFilter,
-            search: searchTerm
-        });
-        const fetchedQuestions = response.data;
-        setQuestions(fetchedQuestions);
-        setFilteredQuestions(fetchedQuestions);
-        setTotalPages(1);
-        setTotalQuestions(fetchedQuestions.length);
-                
+                // Use real API
+                const response = await questionsAPI.getAll({
+                    page: currentPage,
+                    limit: questionsPerPage,
+                    sort: selectedSort,
+                    filter: selectedFilter,
+                    search: searchTerm
+                });
+                const fetchedQuestions = response.data;
+                setQuestions(fetchedQuestions);
+                setFilteredQuestions(fetchedQuestions);
+                setTotalPages(1);
+                setTotalQuestions(fetchedQuestions.length);
             } catch (err) {
                 console.error('Error fetching questions:', err);
                 setError('Failed to fetch questions. Please try again.');
-                
-                // Ultimate fallback - empty state
                 setQuestions([]);
                 setFilteredQuestions([]);
                 setTotalPages(1);
@@ -92,9 +113,8 @@ const HomePage = () => {
                 setLoading(false);
             }
         };
-
         fetchQuestions();
-    }, [currentPage, selectedSort, selectedFilter, searchTerm]);
+    }, [currentPage, selectedSort, selectedFilter, searchTerm, user]);
 
     // Handle search with debounce
     useEffect(() => {
@@ -188,7 +208,7 @@ filtered.sort((a, b) => {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <Navbar user={user} />
+            <Navbar user={user} hasNewAnswerNotification={hasNewAnswerNotification} />
             
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
                 {/* Header Section */}

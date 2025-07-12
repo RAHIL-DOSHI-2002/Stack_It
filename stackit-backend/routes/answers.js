@@ -28,6 +28,26 @@ router.post("/:questionId", authMiddleware, async (req, res) => {
       authorId:   req.user.id,
       content:    req.body.content,
     });
+
+    // Notification logic
+    try {
+      const Question = require('../models/Question');
+      const Notification = require('../models/Notification');
+      const question = await Question.findById(req.params.questionId);
+      if (question && String(question.authorId) !== String(req.user.id)) {
+        // Only notify if the answerer is not the question author
+        await Notification.create({
+          user: question.authorId,
+          question: question._id,
+          answer: a._id,
+          message: `Your question has a new answer!`,
+        });
+      }
+    } catch (notifyErr) {
+      // Log but don't block answer creation
+      console.error('Notification error:', notifyErr);
+    }
+
     res.status(201).json(a);
   } catch (err) {
     res.status(500).json({ error: err.message });
