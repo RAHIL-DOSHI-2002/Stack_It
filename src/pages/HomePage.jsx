@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+    import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import QuestionCard from '../components/QuestionCard';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../api/axios';
-import { mockAPI } from '../api/mockAPI';
+import { questionsAPI } from '../api';
 import { API_CONFIG } from '../config/api';
 
 const HomePage = () => {
@@ -81,21 +81,19 @@ const HomePage = () => {
                 setLoading(true);
                 setError(null);
                 
-                // Use mock API by default for demo
-                const response = await mockAPI.getQuestions({
-                    page: currentPage,
-                    limit: questionsPerPage,
-                    sort: selectedSort,
-                    filter: selectedFilter,
-                    search: searchTerm
-                });
-                
-                const { questions: fetchedQuestions, pagination } = response.data;
-                
-                setQuestions(fetchedQuestions);
-                setFilteredQuestions(fetchedQuestions);
-                setTotalPages(pagination.totalPages);
-                setTotalQuestions(pagination.totalQuestions);
+        // Use real API
+        const response = await questionsAPI.getAll({
+            page: currentPage,
+            limit: questionsPerPage,
+            sort: selectedSort,
+            filter: selectedFilter,
+            search: searchTerm
+        });
+        const fetchedQuestions = response.data;
+        setQuestions(fetchedQuestions);
+        setFilteredQuestions(fetchedQuestions);
+        setTotalPages(1);
+        setTotalQuestions(fetchedQuestions.length);
                 
             } catch (err) {
                 console.error('Error fetching questions:', err);
@@ -346,13 +344,13 @@ const HomePage = () => {
                     ) : (
                         filteredQuestions.map((question) => (
                             <QuestionCard 
-                                key={question.id} 
-                                id={question.id}
+                                key={question._id || question.id}
+                                id={question._id || question.id}
                                 title={question.title}
-                                description={question.body}
+                                description={question.description || question.body}
                                 tags={question.tags}
-                                author={question.author}
-                                answerCount={question.answerCount}
+                                author={question.authorId?.username || question.author || 'Unknown'}
+                                answerCount={question.answerCount || 0}
                             />
                         ))
                     )}
@@ -405,6 +403,5 @@ const HomePage = () => {
             </div>
         </div>
     );
-};
-
+}
 export default HomePage;

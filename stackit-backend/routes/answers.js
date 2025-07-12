@@ -1,8 +1,25 @@
+
 const express = require("express");
 const Answer  = require("../models/Answer");
 const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
+
+// GET /?questionId=...  Fetch answers for a question
+router.get("/", async (req, res) => {
+  const { questionId } = req.query;
+  if (!questionId) {
+    return res.status(400).json({ error: "Missing questionId parameter." });
+  }
+  try {
+    const answers = await Answer.find({ questionId })
+      .populate("authorId", "username")
+      .sort({ createdAt: 1 });
+    res.json(answers);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 router.post("/:questionId", authMiddleware, async (req, res) => {
   try {
@@ -16,7 +33,6 @@ router.post("/:questionId", authMiddleware, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 
 router.post("/vote/:answerId", authMiddleware, async (req, res) => {
   const { delta } = req.body; // { delta: +1 } or { delta: -1 }

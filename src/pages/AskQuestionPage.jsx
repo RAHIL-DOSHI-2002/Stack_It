@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 import RichTextEditor from '../components/RichTextEditor';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../api/axios';
-import { mockAPI } from '../api/mockAPI';
+import { questionsAPI } from '../api';
 import { API_CONFIG } from '../config/api';
 
 const AskQuestionPage = () => {
@@ -65,11 +65,9 @@ const AskQuestionPage = () => {
 
             console.log('Submitting question:', questionData);
 
-            // Use mock API for demo
-            const response = await mockAPI.createQuestion(questionData);
-            
+            // Use real API
+            const response = await questionsAPI.create(questionData);
             console.log('Question submitted successfully:', response.data);
-            
             // Redirect to homepage on success
             navigate('/');
             

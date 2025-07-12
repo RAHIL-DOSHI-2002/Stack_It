@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 import RichTextEditor from '../components/RichTextEditor';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../api/axios';
-import { mockAPI } from '../api/mockAPI';
+import { questionsAPI, answersAPI } from '../api';
 import { API_CONFIG } from '../config/api';
 
 const QuestionDetailPage = () => {
@@ -25,14 +25,12 @@ const QuestionDetailPage = () => {
                 setLoading(true);
                 setError('');
                 
-                // Use mock API for demo
-                const questionResponse = await mockAPI.getQuestion(id);
+                // Use real API
+                const questionResponse = await questionsAPI.getById(id);
                 const fetchedQuestion = questionResponse.data;
-                
                 // Fetch answers for this question
-                const answersResponse = await mockAPI.getAnswers(id);
+                const answersResponse = await answersAPI.getByQuestionId(id);
                 const fetchedAnswers = answersResponse.data;
-                
                 setQuestion(fetchedQuestion);
                 setAnswers(fetchedAnswers);
                 
@@ -71,8 +69,12 @@ const QuestionDetailPage = () => {
                 ? { type: type === 'upvote' ? 'up' : 'down' }
                 : { voteType: type };
             
-            // Use mock API for demo
-            await mockAPI.vote(type, answerId || id);
+            // Use real API for voting
+            if (answerId) {
+                await answersAPI.vote(answerId, type);
+            } else {
+                await questionsAPI.vote(id, type);
+            }
             
             // Update the UI optimistically
             if (answerId) {

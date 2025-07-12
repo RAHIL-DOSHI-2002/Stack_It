@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../api/axios';
-import { mockAPI } from '../api/mockAPI';
+import { authAPI } from '../api';
 import { API_CONFIG } from '../config/api';
 
 const LoginPage = () => {
@@ -34,8 +34,8 @@ const LoginPage = () => {
         setError('');
 
         try {
-            // Use mock API for demo
-            const response = await mockAPI.login({
+            // Use real API
+            const response = await authAPI.login({
                 username: formData.username,
                 password: formData.password
             });

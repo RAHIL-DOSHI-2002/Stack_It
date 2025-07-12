@@ -43,7 +43,7 @@ const QuestionCard = ({ id, title, description, tags = [], author, answerCount =
                     </div>
                     
                     <div className="text-xs sm:text-sm text-gray-500">
-                        Asked by {author}
+                        Asked by <span className="font-semibold text-gray-700">{author}</span>
                     </div>
                 </div>
             </div>

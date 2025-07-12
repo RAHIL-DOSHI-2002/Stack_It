@@ -57,7 +57,7 @@ export const questionsAPI = {
 };
 
 export const answersAPI = {
-    getByQuestionId: (questionId) => api.get(`/questions/${questionId}/answers`),
+    getByQuestionId: (questionId) => api.get(`/answers?questionId=${questionId}`),
     create: (answerData) => api.post('/answers', answerData),
     update: (id, answerData) => api.put(`/answers/${id}`, answerData),
     delete: (id) => api.delete(`/answers/${id}`),

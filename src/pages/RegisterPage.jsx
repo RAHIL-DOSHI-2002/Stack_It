@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axiosInstance from '../api/axios';
-import { mockAPI } from '../api/mockAPI';
+import { authAPI } from '../api';
 import { API_CONFIG } from '../config/api';
 
 const RegisterPage = () => {
@@ -31,8 +31,8 @@ const RegisterPage = () => {
         setError('');
 
         try {
-            // Use mock API for demo
-            const response = await mockAPI.register({
+            // Use real API
+            const response = await authAPI.register({
                 username: formData.username,
                 email: formData.email,
                 password: formData.password
